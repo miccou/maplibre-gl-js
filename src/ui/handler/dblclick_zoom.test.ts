@@ -6,13 +6,13 @@ function createMap() {
     return new Map({container: window.document.createElement('div')} as any as MapOptions);
 }
 
-function simulateDoubleTap(map, delay = 100) {
+function simulateDoubleTap(map, delay = 100, location = {clientX: 0, clientY: 0}) {
     const canvas = map.getCanvas();
     return new Promise(resolve => {
-        simulate.touchstart(canvas, {touches: [{target: canvas, clientX: 0, clientY: 0}]});
+        simulate.touchstart(canvas, {touches: [{target: canvas, clientX: location.clientX, clientY: location.clientY}]});
         simulate.touchend(canvas);
         setTimeout(() => {
-            simulate.touchstart(canvas, {touches: [{target: canvas, clientX: 0, clientY: 0}]});
+            simulate.touchstart(canvas, {touches: [{target: canvas, clientX: location.clientX, clientY: location.clientY}]});
             simulate.touchend(canvas);
             map._renderTaskQueue.run();
             resolve(undefined);
@@ -176,4 +176,29 @@ describe('dbclick_zoom', () => {
             done();
         });
     });
+
+    test('Double click moves map to expected place when clicking left of the antimeridian with terrain enabled', done => {
+        const map = createMap();
+
+        const zoom = jest.fn();
+        map.on('zoomstart', zoom);
+
+        map.addSource('terrain', {
+            type: 'raster-dem',
+            url: 'https://demotiles.maplibre.org/terrain-tiles/tiles.json'
+        });
+
+        map.setTerrain({source: 'terrain'});
+
+        map.setZoom(1);
+
+        map.setCenter([-136.8, -13.9]);
+
+        console.log(map.getCenter());
+
+        simulateDoubleTap(map, 100, {clientX: 10, clientY: 10}).then(() => {
+            expect(zoom).toHaveBeenCalled();
+
+        });
+    })
 });
